@@ -50,6 +50,9 @@ export const Canvas = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [draggedNodePos, setDraggedNodePos] = useState(null);
 
+  const pointersRef = useRef(new Map());
+  const pinchRef = useRef({ initialDist: 0, initialScale: 1, initialCenter: { x: 0, y: 0 }, initialPan: { x: 0, y: 0 } });
+
   useEffect(() => {
     setScale(viewport?.zoom || 1);
     setPan({ x: viewport?.x || 0, y: viewport?.y || 0 });
@@ -122,7 +125,26 @@ export const Canvas = ({
 
   const handleNodePointerDown = (e, nodeId) => {
     e.stopPropagation();
-    
+    if (e.target && e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointersRef.current.size === 2) {
+      setIsDragging(false);
+      setDraggedNodeId(null);
+      setDraggedNodePos(null);
+      
+      const pts = Array.from(pointersRef.current.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchRef.current = {
+        initialDist: dist,
+        initialScale: scale,
+        initialCenter: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+        initialPan: { ...pan }
+      };
+      setIsPanning(true);
+      return;
+    }
+
     if (presentationMode) return;
 
     if (onDragStart && !isDragging) {
@@ -158,15 +180,54 @@ export const Canvas = ({
   };
 
   const handleBgPointerDown = (e) => {
-    setIsPanning(true);
-    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    if (e.target && e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointersRef.current.size === 2) {
+      const pts = Array.from(pointersRef.current.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchRef.current = {
+        initialDist: dist,
+        initialScale: scale,
+        initialCenter: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+        initialPan: { ...pan }
+      };
+      setIsPanning(true);
+    } else if (pointersRef.current.size === 1) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
   };
 
   const handlePointerMove = (e) => {
-    if (isPanning) {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (pointersRef.current.size === 2) {
+      const pts = Array.from(pointersRef.current.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const currentCenter = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+      
+      const pRef = pinchRef.current;
+      if (pRef.initialDist > 0) {
+        const scaleRatio = dist / pRef.initialDist;
+        const newScale = Math.min(Math.max(0.2, pRef.initialScale * scaleRatio), 4);
+        
+        const newPanX = currentCenter.x - ((pRef.initialCenter.x - pRef.initialPan.x) / pRef.initialScale) * newScale;
+        const newPanY = currentCenter.y - ((pRef.initialCenter.y - pRef.initialPan.y) / pRef.initialScale) * newScale;
+        
+        setScale(newScale);
+        setPan(clampPan({ x: newPanX, y: newPanY }));
+      }
+      return;
+    }
+
+    if (isPanning && pointersRef.current.size <= 1) {
+      const activePointer = Array.from(pointersRef.current.values())[0] || { x: e.clientX, y: e.clientY };
       setPan(clampPan({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y
+        x: activePointer.x - panStart.x,
+        y: activePointer.y - panStart.y
       }));
       return;
     }
@@ -188,7 +249,16 @@ export const Canvas = ({
     setDraggedNodePos({ x: newX, y: newY });
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e) => {
+    pointersRef.current.delete(e.pointerId);
+
+    if (pointersRef.current.size === 1) {
+       const remaining = Array.from(pointersRef.current.values())[0];
+       setPanStart({ x: remaining.x - pan.x, y: remaining.y - pan.y });
+       pinchRef.current.initialDist = 0;
+       return; 
+    }
+
     if (draggedNodeId && draggedNodePos) {
       updateNodePosition(draggedNodeId, draggedNodePos.x, draggedNodePos.y);
     }
@@ -199,6 +269,7 @@ export const Canvas = ({
     setDraggedNodeId(null);
     setDraggedNodePos(null);
     setIsPanning(false);
+    pinchRef.current.initialDist = 0;
   };
 
   useEffect(() => {

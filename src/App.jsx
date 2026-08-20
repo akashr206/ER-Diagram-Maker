@@ -4,7 +4,7 @@ import { Canvas } from './components/Canvas';
 import { FloatingPanel } from './components/FloatingPanel';
 import { TopBar } from './components/TopBar';
 import { getNonOverlappingPosition } from './utils/placement';
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 import { 
   loadStoredDiagrams, 
   saveDiagrams, 
@@ -295,52 +295,53 @@ function App() {
   };
 
   return (
-    <>
-      {!presentationMode && (
-        <>
-          <TopBar 
-            diagrams={diagrams}
-            activeDiagram={activeDiagram}
-            onCreateDiagram={handleCreateDiagram}
-            onSelectDiagram={handleSelectDiagram}
-            onRenameDiagram={handleRenameDiagram}
-            onDuplicateDiagram={handleDuplicateDiagram}
-            onDeleteDiagram={handleDeleteDiagram}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={history.past.length > 0}
-            canRedo={history.future.length > 0}
+      <>
+          <Analytics />
+          {!presentationMode && (
+              <>
+                  <TopBar
+                      diagrams={diagrams}
+                      activeDiagram={activeDiagram}
+                      onCreateDiagram={handleCreateDiagram}
+                      onSelectDiagram={handleSelectDiagram}
+                      onRenameDiagram={handleRenameDiagram}
+                      onDuplicateDiagram={handleDuplicateDiagram}
+                      onDeleteDiagram={handleDeleteDiagram}
+                      onUndo={handleUndo}
+                      onRedo={handleRedo}
+                      canUndo={history.past.length > 0}
+                      canRedo={history.future.length > 0}
+                  />
+                  <FloatingPanel
+                      nodes={nodes}
+                      onAddNode={handleAddNode}
+                      onUpdateNode={handleUpdateNode}
+                      onDeleteNode={handleDeleteNode}
+                      selectedNodeId={selectedNodeId}
+                      setSelectedNodeId={setSelectedNodeId}
+                  />
+              </>
+          )}
+          <Canvas
+              nodes={nodes}
+              edges={edges}
+              updateNodePosition={handleUpdateNodePosition}
+              selectedNodeId={selectedNodeId}
+              setSelectedNodeId={setSelectedNodeId}
+              editingNodeId={editingNodeId}
+              setEditingNodeId={setEditingNodeId}
+              onUpdateNode={handleUpdateNode}
+              onAddNode={handleAddNode}
+              onDeleteNode={handleDeleteNode}
+              onDragStart={commitHistory}
+              diagramId={activeDiagram.id}
+              diagramName={activeDiagram.name}
+              viewport={activeDiagram.viewport || { x: 0, y: 0, zoom: 1 }}
+              onViewportChange={handleUpdateViewport}
+              presentationMode={presentationMode}
+              setPresentationMode={setPresentationMode}
           />
-          <FloatingPanel 
-            nodes={nodes} 
-            onAddNode={handleAddNode} 
-            onUpdateNode={handleUpdateNode}
-            onDeleteNode={handleDeleteNode}
-            selectedNodeId={selectedNodeId}
-            setSelectedNodeId={setSelectedNodeId}
-          />
-        </>
-      )}
-      <Canvas 
-        nodes={nodes}
-        edges={edges}
-        updateNodePosition={handleUpdateNodePosition}
-        selectedNodeId={selectedNodeId}
-        setSelectedNodeId={setSelectedNodeId}
-        editingNodeId={editingNodeId}
-        setEditingNodeId={setEditingNodeId}
-        onUpdateNode={handleUpdateNode}
-        onAddNode={handleAddNode}
-        onDeleteNode={handleDeleteNode}
-        onDragStart={commitHistory}
-        diagramId={activeDiagram.id}
-        diagramName={activeDiagram.name}
-        viewport={activeDiagram.viewport || { x: 0, y: 0, zoom: 1 }}
-        onViewportChange={handleUpdateViewport}
-        presentationMode={presentationMode}
-        setPresentationMode={setPresentationMode}
-      />
-    </>
+      </>
   );
 }
 
