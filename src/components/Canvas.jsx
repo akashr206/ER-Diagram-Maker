@@ -491,8 +491,8 @@ export const Canvas = ({
         </g>
       </svg>
       
-      <div style={{ position: 'absolute', bottom: '24px', left: '24px', display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 5 }} className="no-export">
-        <div className="zoom-controls-container glass-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '4px', width: 'fit-content' }}>
+      <div style={{ position: 'absolute', bottom: '24px', left: '24px', display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 5, pointerEvents: 'none' }} className="no-export">
+        <div className="zoom-controls-container glass-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '4px', width: 'fit-content', pointerEvents: 'auto' }}>
           <button className="btn btn-secondary" style={{ padding: '8px', border: 'none', background: 'transparent' }} onClick={() => handleZoom(0.2)} title="Zoom In">
             <ZoomIn size={18} />
           </button>
@@ -511,7 +511,7 @@ export const Canvas = ({
         </div>
 
         {!presentationMode && (
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', pointerEvents: 'auto' }}>
             <button className="btn btn-secondary glass-panel" onClick={() => downloadSVG(svgRef.current, `${diagramName || 'er-diagram'}.svg`, getBoundingBox())}>
               Export SVG
             </button>
