@@ -1,0 +1,509 @@
+import React, { useState } from 'react';
+import { 
+  Plus, 
+  Trash2, 
+  Tag, 
+  Box, 
+  ArrowRightLeft, 
+  Key, 
+  Layers, 
+  X, 
+  Database,
+  Sparkles,
+  Link2,
+  KeyRound,
+  GitCommit
+} from 'lucide-react';
+import { CustomSelect } from './CustomSelect';
+
+export const FloatingPanel = ({ 
+  nodes, 
+  onAddNode, 
+  onUpdateNode, 
+  onDeleteNode, 
+  selectedNodeId, 
+  setSelectedNodeId 
+}) => {
+  const [quickEntity, setQuickEntity] = useState('');
+  const [newAttrName, setNewAttrName] = useState('');
+  const [newAttrType, setNewAttrType] = useState('regular');
+
+  const selectedNode = nodes.find(n => n.id === selectedNodeId);
+
+  const entities = nodes.filter(n => n.type === 'entity');
+
+  const entityAttributes = selectedNode && selectedNode.type === 'entity'
+    ? nodes.filter(n => n.type === 'attribute' && n.parentId === selectedNode.id)
+    : [];
+
+  const areEntitiesConnected = (ent1Id, ent2Id, ignoreRelId) => {
+    if (!ent1Id || !ent2Id) return false;
+    const relNodes = nodes.filter(n => n.type === 'relationship' && n.id !== ignoreRelId);
+    return relNodes.some(rel => {
+      return (rel.parentId === ent1Id && rel.parentId2 === ent2Id) ||
+             (rel.parentId === ent2Id && rel.parentId2 === ent1Id);
+    });
+  };
+
+  const prevAttrCountRef = React.useRef(entityAttributes.length);
+  React.useEffect(() => {
+    if (entityAttributes.length > prevAttrCountRef.current) {
+      const newAttr = entityAttributes[entityAttributes.length - 1];
+      const input = document.getElementById(`attr-input-${newAttr.id}`);
+      if (input) {
+        input.focus();
+        input.select(); // Highlight the text "New Attribute" so they can type immediately
+      }
+    }
+    prevAttrCountRef.current = entityAttributes.length;
+  }, [entityAttributes]);
+
+  const handleAddQuickEntity = (e) => {
+    e.preventDefault();
+    if (!quickEntity.trim()) return;
+    onAddNode('entity', 'regular', quickEntity.trim(), null, null);
+    setQuickEntity('');
+  };
+
+  const handleAddAttributeToEntity = (e) => {
+    if (e) e.preventDefault();
+    if (!selectedNode || selectedNode.type !== 'entity') return;
+    
+    const attrName = newAttrName.trim() || `attr_${entityAttributes.length + 1}`;
+    onAddNode('attribute', newAttrType, attrName, selectedNode.id, null);
+    setNewAttrName('');
+    setNewAttrType('regular');
+  };
+
+  const handleAddKeyAttribute = () => {
+    if (!selectedNode || selectedNode.type !== 'entity') return;
+    const attrName = newAttrName.trim() || (selectedNode.label.toLowerCase() + '_id');
+    onAddNode('attribute', 'key', attrName, selectedNode.id, null);
+    setNewAttrName('');
+  };
+
+  const handleAddWeakKeyAttribute = () => {
+    if (!selectedNode || selectedNode.type !== 'entity') return;
+    const attrName = newAttrName.trim() || (selectedNode.label.toLowerCase() + '_part_id');
+    onAddNode('attribute', 'weak_key', attrName, selectedNode.id, null);
+    setNewAttrName('');
+  };
+
+  const handleSetCardinalityPreset = (c1, c2) => {
+    if (!selectedNode || selectedNode.type !== 'relationship') return;
+    onUpdateNode(selectedNode.id, { cardinality1: c1, cardinality2: c2 });
+  };
+
+  return (
+    <aside className="sidebar no-export">
+      <div className="sidebar-header">
+        <div className="sidebar-brand">
+          <div className="brand-icon">
+            <Database size={18} />
+          </div>
+          <div>
+            <div className="title">Schema Elements</div>
+            <div className="subtitle">Chen Notation Builder</div>
+          </div>
+        </div>
+        {selectedNode && (
+          <button 
+            className="btn-icon" 
+            title="Deselect"
+            onClick={() => setSelectedNodeId(null)}
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      <div className="sidebar-content">
+        {!selectedNode ? (
+          <>
+            <div className="panel-section">
+              <div className="section-title">Quick Add Entity</div>
+              <form onSubmit={handleAddQuickEntity} className="quick-add-form">
+                <input
+                  className="input-field"
+                  value={quickEntity}
+                  onChange={(e) => setQuickEntity(e.target.value)}
+                  placeholder="e.g. Student, Course, Order..."
+                  autoFocus
+                />
+                <button type="submit" className="btn btn-primary" title="Add Entity">
+                  <Plus size={16} /> Add
+                </button>
+              </form>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Library Palette</div>
+              <div className="palette-grid">
+                <button 
+                  className="palette-btn" 
+                  onClick={() => onAddNode('entity', 'regular', 'Entity', null, null)}
+                >
+                  <Box size={16} />
+                  <span>Entity</span>
+                </button>
+                <button 
+                  className="palette-btn" 
+                  onClick={() => onAddNode('entity', 'weak', 'Weak Entity', null, null)}
+                >
+                  <Layers size={16} />
+                  <span>Weak Entity</span>
+                </button>
+                <button 
+                  className="palette-btn" 
+                  onClick={() => onAddNode('relationship', 'regular', 'Relationship', null, null)}
+                >
+                  <ArrowRightLeft size={16} />
+                  <span>Relationship</span>
+                </button>
+                <button 
+                  className="palette-btn" 
+                  onClick={() => onAddNode('relationship', 'weak', 'Identifying Rel', null, null)}
+                >
+                  <Link2 size={16} />
+                  <span>Weak Rel</span>
+                </button>
+              </div>
+            </div>
+
+            {entities.length > 0 && (
+              <div className="panel-section">
+                <div className="section-title-row">
+                  <div className="section-title">Entities in Diagram</div>
+                  <span className="badge">{entities.length}</span>
+                </div>
+                <div className="entity-list">
+                  {entities.map(ent => {
+                    const attrs = nodes.filter(n => n.type === 'attribute' && n.parentId === ent.id);
+                    const keyAttrs = attrs.filter(n => n.subtype === 'key' || n.subtype === 'weak_key');
+                    return (
+                      <div 
+                        key={ent.id} 
+                        className="entity-list-item"
+                        onClick={() => setSelectedNodeId(ent.id)}
+                      >
+                        <div className="entity-list-info">
+                          <span className="entity-name">{ent.label}</span>
+                          <span className="entity-meta">
+                            {ent.subtype === 'weak' ? 'Weak Entity • ' : ''}
+                            {attrs.length} {attrs.length === 1 ? 'attribute' : 'attributes'}
+                            {keyAttrs.length > 0 && ` (${keyAttrs.length} keys)`}
+                          </span>
+                        </div>
+                        <button className="btn-text">Edit</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="helper-box">
+              <Sparkles size={16} className="helper-icon" />
+              <span>
+                Click on any Entity on the canvas to inspect, rename, and manage all its attributes and keys.
+              </span>
+            </div>
+          </>
+        ) : selectedNode.type === 'entity' ? (
+          <>
+            <div className="selection-badge-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span className="tag-badge">
+                <Box size={13} /> {selectedNode.subtype === 'weak' ? 'Weak Entity' : 'Entity'}
+              </span>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'auto', gap: '4px', borderRadius: '4px' }} 
+                onClick={() => setSelectedNodeId(null)}
+                title="Back to library"
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Entity Details</div>
+              <div className="form-group">
+                <label className="form-label">Entity Name</label>
+                <input
+                  className="input-field"
+                  value={selectedNode.label}
+                  onChange={(e) => onUpdateNode(selectedNode.id, { label: e.target.value })}
+                  placeholder="Entity name"
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Entity Type</label>
+                <CustomSelect 
+                  value={selectedNode.subtype || 'regular'} 
+                  onChange={(val) => onUpdateNode(selectedNode.id, { subtype: val })}
+                  options={[
+                    { value: 'regular', label: 'Regular Entity (Single Rectangle)' },
+                    { value: 'weak', label: 'Weak Entity (Double Rectangle)' }
+                  ]}
+                />
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title-row">
+                <div className="section-title">
+                  <Tag size={14} style={{ marginRight: '6px' }} />
+                  Attributes
+                </div>
+                <span className="badge">{entityAttributes.length}</span>
+              </div>
+
+              <div className="attributes-manager-list" style={{ gap: '6px' }}>
+                {entityAttributes.map((attr) => (
+                  <div key={attr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      id={`attr-input-${attr.id}`}
+                      className="input-field input-field-sm"
+                      style={{ flex: 1 }}
+                      value={attr.label}
+                      onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
+                      placeholder="Name"
+                    />
+                    <div style={{ width: '130px', flexShrink: 0 }}>
+                      <CustomSelect
+                        small
+                        value={attr.subtype || 'regular'}
+                        onChange={(val) => onUpdateNode(attr.id, { subtype: val })}
+                        options={[
+                          { value: 'key', label: 'Primary Key' },
+                          { value: 'weak_key', label: 'Weak Key' },
+                          { value: 'regular', label: 'Regular' },
+                          { value: 'multivalued', label: 'Multi-valued' },
+                          { value: 'derived', label: 'Derived' }
+                        ]}
+                      />
+                    </div>
+                    <button 
+                      className="btn-icon-danger" 
+                      title="Delete Attribute"
+                      onClick={() => onDeleteNode(attr.id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ marginTop: '4px' }}
+                  onClick={() => onAddNode('attribute', 'regular', 'New Attribute', selectedNode.id, null)}
+                >
+                  <Plus size={14} /> Add Attribute
+                </button>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Relationships</div>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => onAddNode('relationship', 'regular', 'Relates', selectedNode.id, null)}
+              >
+                <ArrowRightLeft size={15} /> Connect to New Relationship
+              </button>
+            </div>
+
+            <div className="panel-actions-footer">
+              <button 
+                className="btn btn-secondary btn-danger" 
+                onClick={() => onDeleteNode(selectedNode.id)}
+              >
+                <Trash2 size={16} /> Delete Entity
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setSelectedNodeId(null)}
+              >
+                Done
+              </button>
+            </div>
+          </>
+        ) : selectedNode.type === 'relationship' ? (
+          <>
+            <div className="selection-badge-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span className="tag-badge">
+                <ArrowRightLeft size={13} /> {selectedNode.subtype === 'weak' ? 'Identifying Relationship' : 'Relationship'}
+              </span>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'auto', gap: '4px', borderRadius: '4px' }} 
+                onClick={() => setSelectedNodeId(null)}
+                title="Back to library"
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Relationship Details</div>
+              <div className="form-group">
+                <label className="form-label">Name</label>
+                <input
+                  className="input-field"
+                  value={selectedNode.label}
+                  onChange={(e) => onUpdateNode(selectedNode.id, { label: e.target.value })}
+                  placeholder="e.g. Enrolls, Works_In..."
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Relationship Type</label>
+                <select 
+                  className="input-field select-field" 
+                  value={selectedNode.subtype || 'regular'} 
+                  onChange={(e) => onUpdateNode(selectedNode.id, { subtype: e.target.value })}
+                >
+                  <option value="regular">Regular Relationship (Diamond)</option>
+                  <option value="weak">Identifying Relationship (Double Diamond)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title-row">
+                <div className="section-title">
+                  <GitCommit size={13} style={{ marginRight: '6px' }} />
+                  Cardinality Ratio Presets
+                </div>
+              </div>
+              <div className="cardinality-preset-grid">
+                <button 
+                  className={`preset-btn ${selectedNode.cardinality1 === '1' && selectedNode.cardinality2 === 'N' ? 'active-preset' : ''}`}
+                  onClick={() => handleSetCardinalityPreset('1', 'N')}
+                  title="One to Many (1:N)"
+                >
+                  <strong>1 : N</strong>
+                  <span>One to Many</span>
+                </button>
+                <button 
+                  className={`preset-btn ${selectedNode.cardinality1 === 'M' && selectedNode.cardinality2 === 'N' ? 'active-preset' : ''}`}
+                  onClick={() => handleSetCardinalityPreset('M', 'N')}
+                  title="Many to Many (M:N / N:N)"
+                >
+                  <strong>M : N</strong>
+                  <span>Many to Many</span>
+                </button>
+                <button 
+                  className={`preset-btn ${selectedNode.cardinality1 === '1' && selectedNode.cardinality2 === '1' ? 'active-preset' : ''}`}
+                  onClick={() => handleSetCardinalityPreset('1', '1')}
+                  title="One to One (1:1)"
+                >
+                  <strong>1 : 1</strong>
+                  <span>One to One</span>
+                </button>
+                <button 
+                  className={`preset-btn ${selectedNode.cardinality1 === 'N' && selectedNode.cardinality2 === '1' ? 'active-preset' : ''}`}
+                  onClick={() => handleSetCardinalityPreset('N', '1')}
+                  title="Many to One (N:1)"
+                >
+                  <strong>N : 1</strong>
+                  <span>Many to One</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Connected Entities & Roles</div>
+              
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.parentId || ''} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { parentId: val })}
+                    options={[
+                      { value: '', label: '-- Entity 1 --' },
+                      ...entities
+                        .filter(n => !areEntitiesConnected(n.id, selectedNode.parentId2, selectedNode.id))
+                        .map(n => ({ value: n.id, label: n.label }))
+                    ]}
+                  />
+                </div>
+                <div style={{ width: '80px', flexShrink: 0 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.cardinality1 || '1'} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { cardinality1: val })}
+                    options={[
+                      { value: '1', label: '1' },
+                      { value: 'N', label: 'N' },
+                      { value: 'M', label: 'M' }
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.parentId2 || ''} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { parentId2: val })}
+                    options={[
+                      { value: '', label: '-- Entity 2 --' },
+                      ...entities
+                        .filter(n => !areEntitiesConnected(selectedNode.parentId, n.id, selectedNode.id))
+                        .map(n => ({ value: n.id, label: n.label }))
+                    ]}
+                  />
+                </div>
+                <div style={{ width: '80px', flexShrink: 0 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.cardinality2 || 'N'} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { cardinality2: val })}
+                    options={[
+                      { value: 'N', label: 'N' },
+                      { value: '1', label: '1' },
+                      { value: 'M', label: 'M' }
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+
+            <div className="panel-actions-footer">
+              <button className="btn btn-secondary btn-danger" onClick={() => onDeleteNode(selectedNode.id)}>
+                <Trash2 size={16} /> Delete Relationship
+              </button>
+              <button className="btn btn-secondary" onClick={() => setSelectedNodeId(null)}>
+                Done
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="panel-section">
+            <div className="section-title">Attribute Details</div>
+            <div className="helper-box">
+              Attributes are managed directly inside their parent Entity.
+            </div>
+            {selectedNode.parentId && (
+              <button 
+                className="btn btn-primary"
+                onClick={() => setSelectedNodeId(selectedNode.parentId)}
+              >
+                <Box size={15} /> Go to Parent Entity
+              </button>
+            )}
+            <button className="btn btn-secondary" onClick={() => setSelectedNodeId(null)}>
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+};
