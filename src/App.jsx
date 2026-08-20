@@ -4,6 +4,7 @@ import { Canvas } from './components/Canvas';
 import { FloatingPanel } from './components/FloatingPanel';
 import { TopBar } from './components/TopBar';
 import { getNonOverlappingPosition } from './utils/placement';
+import { Analytics } from "@vercel/analytics/next";
 import { 
   loadStoredDiagrams, 
   saveDiagrams, 
