@@ -119,7 +119,7 @@ function App() {
     if (diagramId === activeDiagramId) return;
     setActiveDiagramId(diagramId);
     setSelectedNodeId(null);
-    setHistory({ past: [], future: [] }); // clear history on switch
+    setHistory({ past: [], future: [] });
   };
 
   const handleRenameDiagram = (diagramId, newName) => {
@@ -165,8 +165,13 @@ function App() {
     let x, y;
 
     const viewport = activeDiagram.viewport || { x: 0, y: 0, zoom: 1 };
-    const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom;
-    const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom;
+    
+    const isMobile = window.innerWidth <= 768;
+    const screenCenterX = isMobile ? window.innerWidth / 2 : (window.innerWidth - (presentationMode ? 0 : 340)) / 2;
+    const screenCenterY = isMobile ? window.innerHeight * 0.275 : window.innerHeight / 2;
+
+    const centerX = (screenCenterX - viewport.x) / viewport.zoom;
+    const centerY = (screenCenterY - viewport.y) / viewport.zoom;
 
     if ((type === 'attribute' || type === 'relationship') && parentId) {
       const parent = nodes.find(n => n.id === parentId);
@@ -276,8 +281,20 @@ function App() {
     updateActiveDiagram(d => {
       const currentNodes = d.nodes || [];
       const currentEdges = d.edges || [];
-      const newNodes = currentNodes.filter(n => n.id !== nodeId && n.parentId !== nodeId);
-      const newEdges = currentEdges.filter(e => e.source !== nodeId && e.target !== nodeId);
+      
+      const getDescendants = (id) => {
+        const children = currentNodes.filter(n => n.parentId === id || n.parentId2 === id).map(n => n.id);
+        let all = [...children];
+        for (const childId of children) {
+          all = [...all, ...getDescendants(childId)];
+        }
+        return all;
+      };
+      
+      const toDelete = new Set([nodeId, ...getDescendants(nodeId)]);
+      
+      const newNodes = currentNodes.filter(n => !toDelete.has(n.id));
+      const newEdges = currentEdges.filter(e => !toDelete.has(e.source) && !toDelete.has(e.target));
       return { ...d, nodes: newNodes, edges: newEdges };
     });
     if (selectedNodeId === nodeId) {

@@ -31,7 +31,6 @@ export function getNonOverlappingPosition(nodes, startX, startY, nodeWidth = 120
       return { x: Math.round(x), y: Math.round(y) };
     }
     
-    // Offset diagonally to find empty space
     offsetX += 40;
     offsetY += 40;
     attempts++;

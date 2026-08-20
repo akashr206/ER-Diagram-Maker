@@ -57,7 +57,6 @@ button {
   border-radius: 12px;
 }
 
-/* Base button styles */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -197,7 +196,6 @@ button {
   background-color: #f1f5f9;
 }
 
-/* Inputs & Selects */
 .input-field {
   width: 100%;
   padding: 8px 12px;
@@ -250,7 +248,6 @@ button {
   cursor: pointer;
 }
 
-/* Docked Sidebar - Spacious layout */
 .sidebar {
   position: fixed;
   top: 0;
@@ -321,7 +318,6 @@ button {
   border-radius: 4px;
 }
 
-/* Sections */
 .panel-section {
   display: flex;
   flex-direction: column;
@@ -409,7 +405,6 @@ button {
   letter-spacing: 0.04em;
 }
 
-/* Quick Add & Palette */
 .quick-add-form {
   display: flex;
   gap: 8px;
@@ -444,7 +439,6 @@ button {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
-/* Entity list overview */
 .entity-list {
   display: flex;
   flex-direction: column;
@@ -485,7 +479,6 @@ button {
   color: var(--text-muted);
 }
 
-/* Helper Box */
 .helper-box {
   display: flex;
   gap: 10px;
@@ -504,7 +497,6 @@ button {
   margin-top: 1px;
 }
 
-/* Attributes Manager in Entity Form */
 .attributes-manager-list {
   display: flex;
   flex-direction: column;
@@ -595,7 +587,6 @@ button {
   gap: 10px;
 }
 
-/* Add Attribute Box */
 .add-attribute-box {
   background: #f8fafc;
   border: 1px solid var(--border-color);
@@ -635,7 +626,6 @@ button {
   flex: 1;
 }
 
-/* Canvas Top Bar */
 .canvas-topbar {
   position: fixed;
   top: 20px;
@@ -795,7 +785,6 @@ button {
   color: var(--text-main);
 }
 
-/* Relationship Cardinality Presets & Connectors in Sidebar */
 .cardinality-preset-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -903,8 +892,8 @@ button {
     overflow-x: auto;
     justify-content: flex-start;
     padding-right: 20px;
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   
   .canvas-topbar::-webkit-scrollbar {

@@ -40,7 +40,6 @@ export function downloadSVG(svgElement, filename = 'er-diagram.svg', bbox = null
   const serializer = new XMLSerializer();
   let source = serializer.serializeToString(clone);
 
-  // Many SVG viewers do not support CSS variables, so we must hard-replace them
   source = source.replace(/var\(--node-stroke\)/g, nodeStroke);
   source = source.replace(/var\(--node-fill\)/g, nodeFill);
   source = source.replace(/var\(--text-main\)/g, textMain);

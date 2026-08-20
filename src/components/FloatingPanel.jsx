@@ -52,7 +52,7 @@ export const FloatingPanel = ({
       const input = document.getElementById(`attr-input-${newAttr.id}`);
       if (input) {
         input.focus();
-        input.select(); // Highlight the text "New Attribute" so they can type immediately
+        input.select();
       }
     }
     prevAttrCountRef.current = entityAttributes.length;
@@ -261,39 +261,74 @@ export const FloatingPanel = ({
               </div>
 
               <div className="attributes-manager-list" style={{ gap: '6px' }}>
-                {entityAttributes.map((attr) => (
-                  <div key={attr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input
-                      id={`attr-input-${attr.id}`}
-                      className="input-field input-field-sm"
-                      style={{ flex: 1 }}
-                      value={attr.label}
-                      onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
-                      placeholder="Name"
-                    />
-                    <div style={{ width: '130px', flexShrink: 0 }}>
-                      <CustomSelect
-                        small
-                        value={attr.subtype || 'regular'}
-                        onChange={(val) => onUpdateNode(attr.id, { subtype: val })}
-                        options={[
-                          { value: 'key', label: 'Primary Key' },
-                          { value: 'weak_key', label: 'Weak Key' },
-                          { value: 'regular', label: 'Regular' },
-                          { value: 'multivalued', label: 'Multi-valued' },
-                          { value: 'derived', label: 'Derived' }
-                        ]}
+                {entityAttributes.map((attr) => {
+                  const subAttrs = nodes.filter(n => n.type === 'attribute' && n.parentId === attr.id);
+                  return (
+                  <div key={attr.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <input
+                        id={`attr-input-${attr.id}`}
+                        className="input-field input-field-sm"
+                        style={{ flex: 1 }}
+                        value={attr.label}
+                        onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
+                        placeholder="Name"
                       />
+                      <div style={{ width: '130px', flexShrink: 0 }}>
+                        <CustomSelect
+                          small
+                          value={attr.subtype || 'regular'}
+                          onChange={(val) => onUpdateNode(attr.id, { subtype: val })}
+                          options={[
+                            { value: 'key', label: 'Primary Key' },
+                            { value: 'weak_key', label: 'Weak Key' },
+                            { value: 'regular', label: 'Regular' },
+                            { value: 'multivalued', label: 'Multi-valued' },
+                            { value: 'derived', label: 'Derived' },
+                            { value: 'composite', label: 'Composite' }
+                          ]}
+                        />
+                      </div>
+                      <button 
+                        className="btn-icon-danger" 
+                        title="Delete Attribute"
+                        onClick={() => onDeleteNode(attr.id)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                    <button 
-                      className="btn-icon-danger" 
-                      title="Delete Attribute"
-                      onClick={() => onDeleteNode(attr.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {attr.subtype === 'composite' && (
+                      <div style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '2px solid #e2e8f0', marginLeft: '6px', marginTop: '2px', marginBottom: '8px' }}>
+                        {subAttrs.map(subAttr => (
+                          <div key={subAttr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Layers size={13} style={{ color: '#94a3b8' }} />
+                            <input
+                              className="input-field input-field-sm"
+                              style={{ flex: 1 }}
+                              value={subAttr.label}
+                              onChange={(e) => onUpdateNode(subAttr.id, { label: e.target.value })}
+                              placeholder="Sub-attribute"
+                            />
+                            <button 
+                              className="btn-icon-danger" 
+                              style={{ padding: '4px' }}
+                              onClick={() => onDeleteNode(subAttr.id)}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                        <button 
+                          className="btn btn-secondary btn-sm" 
+                          style={{ alignSelf: 'flex-start', padding: '4px 8px', fontSize: '11px', minHeight: '24px' }}
+                          onClick={() => onAddNode('attribute', 'regular', 'Sub-Attr', attr.id, null)}
+                        >
+                          <Plus size={12} /> Add Sub-Attribute
+                        </button>
+                      </div>
+                    )}
                   </div>
-                ))}
+                )})}
                 <button 
                   className="btn btn-secondary" 
                   style={{ marginTop: '4px' }}
@@ -485,23 +520,83 @@ export const FloatingPanel = ({
             </div>
           </>
         ) : (
-          <div className="panel-section">
-            <div className="section-title">Attribute Details</div>
-            <div className="helper-box">
-              Attributes are managed directly inside their parent Entity.
-            </div>
-            {selectedNode.parentId && (
+          <>
+            <div className="selection-badge-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <span className="tag-badge">
+                <Tag size={13} /> Attribute
+              </span>
               <button 
-                className="btn btn-primary"
+                className="btn btn-secondary" 
+                style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'auto', gap: '4px', borderRadius: '4px' }} 
                 onClick={() => setSelectedNodeId(selectedNode.parentId)}
+                title="Go to Parent"
               >
-                <Box size={15} /> Go to Parent Entity
+                Back to Parent
               </button>
-            )}
-            <button className="btn btn-secondary" onClick={() => setSelectedNodeId(null)}>
-              Done
-            </button>
-          </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title">Attribute Name</div>
+              <div className="form-group" style={{ marginTop: '12px' }}>
+                <input
+                  className="input-field"
+                  value={selectedNode.label}
+                  onChange={(e) => onUpdateNode(selectedNode.id, { label: e.target.value })}
+                  placeholder="Attribute name"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="panel-section">
+              <div className="section-title-row">
+                <div className="section-title">Sub-Attributes</div>
+                <span className="badge">{nodes.filter(n => n.parentId === selectedNode.id).length}</span>
+              </div>
+              <div className="helper-box" style={{ marginTop: '12px', marginBottom: '12px' }}>
+                Add sub-attributes to create a Composite Attribute (e.g. splitting "Name" into "First Name" and "Last Name").
+              </div>
+              <div className="attributes-manager-list" style={{ gap: '6px' }}>
+                {nodes.filter(n => n.parentId === selectedNode.id).map((attr) => (
+                  <div key={attr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={13} style={{ color: '#94a3b8' }} />
+                    <input
+                      id={`attr-input-${attr.id}`}
+                      className="input-field input-field-sm"
+                      style={{ flex: 1 }}
+                      value={attr.label}
+                      onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
+                    />
+                    <button 
+                      className="btn-icon-danger" 
+                      style={{ padding: '4px' }}
+                      onClick={() => onDeleteNode(attr.id)}
+                      title="Delete Sub-Attribute"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+                
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  style={{ marginTop: '6px' }}
+                  onClick={() => onAddNode('attribute', 'regular', 'Sub-Attribute', selectedNode.id, null)}
+                >
+                  <Plus size={14} /> Add Sub-Attribute
+                </button>
+              </div>
+            </div>
+            
+            <div className="panel-actions-footer">
+              <button className="btn btn-secondary btn-danger" onClick={() => onDeleteNode(selectedNode.id)}>
+                <Trash2 size={16} /> Delete Attribute
+              </button>
+              <button className="btn btn-secondary" onClick={() => setSelectedNodeId(null)}>
+                Done
+              </button>
+            </div>
+          </>
         )}
       </div>
     </aside>
