@@ -1,16 +1,22 @@
-# React + Vite
+# ER Diagram Maker
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A web-based tool for designing and building Chen Entity-Relationship (ER) diagrams. 
 
-Currently, two official plugins are available:
+Live Demo: https://er-maker.vercel.app/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Interactive Canvas: Drag, drop, and arrange nodes freely on an infinite canvas with smooth panning and zooming.
+- Comprehensive ER Components: Create regular and weak entities, attributes (key, multi-valued, derived), and identifying or standard relationships.
+- Smart Connections: Automatically draw and maintain connecting lines between entities, attributes, and relationships.
+- Cardinality Constraints: Define cardinality ratios (1:1, 1:N, M:N) for relationship connections.
+- Export Options: Export your finished diagrams cleanly to high-resolution PNG or vector SVG formats.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Development
 
-## Expanding the Oxlint configuration
+To run the project locally:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Run `npm run dev` to start the development server
+4. Open the local address provided in your terminal
