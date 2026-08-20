@@ -27,6 +27,25 @@ export const FloatingPanel = ({
   const [quickEntity, setQuickEntity] = useState('');
   const [newAttrName, setNewAttrName] = useState('');
   const [newAttrType, setNewAttrType] = useState('regular');
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  const handleSubtypeChange = (attrId, oldSubtype, newSubtype) => {
+    if (oldSubtype === 'composite' && newSubtype !== 'composite') {
+      const subAttrs = nodes.filter(n => n.type === 'attribute' && n.parentId === attrId);
+      setConfirmDialog({
+        title: "Change Attribute Type?",
+        message: "Changing this attribute from Composite to another type will permanently delete all of its sub-attributes.",
+        onConfirm: () => {
+          subAttrs.forEach(sa => onDeleteNode(sa.id));
+          onUpdateNode(attrId, { subtype: newSubtype });
+          setConfirmDialog(null);
+        },
+        onCancel: () => setConfirmDialog(null)
+      });
+      return;
+    }
+    onUpdateNode(attrId, { subtype: newSubtype });
+  };
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
@@ -278,7 +297,7 @@ export const FloatingPanel = ({
                         <CustomSelect
                           small
                           value={attr.subtype || 'regular'}
-                          onChange={(val) => onUpdateNode(attr.id, { subtype: val })}
+                          onChange={(val) => handleSubtypeChange(attr.id, attr.subtype, val)}
                           options={[
                             { value: 'key', label: 'Primary Key' },
                             { value: 'weak_key', label: 'Weak Key' },
@@ -599,6 +618,19 @@ export const FloatingPanel = ({
           </>
         )}
       </div>
+
+      {confirmDialog && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '6px', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>{confirmDialog.title}</h3>
+            <p style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{confirmDialog.message}</p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" style={{ borderRadius: '6px' }} onClick={confirmDialog.onCancel}>Cancel</button>
+              <button className="btn btn-primary" style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: '#fff', borderRadius: '6px' }} onClick={confirmDialog.onConfirm}>Change & Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
