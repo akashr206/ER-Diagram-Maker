@@ -24,7 +24,8 @@ export const TopBar = ({
   onUndo,
   onRedo,
   canUndo,
-  canRedo
+  canRedo,
+  onPreviewSchema
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
@@ -130,6 +131,18 @@ export const TopBar = ({
           title="Duplicate Current Diagram"
         >
           <Copy size={14} />
+        </button>
+
+        <div className="topbar-divider" style={{ height: '14px', margin: '0 4px' }} />
+
+        <button 
+          className="btn btn-secondary btn-sm" 
+          onClick={onPreviewSchema}
+          title="Preview Relational Schema Mapping"
+          style={{ gap: '6px' }}
+        >
+          <Database size={14} />
+          <span style={{ display: 'none' }}>Map</span> Schema
         </button>
 
         {diagrams.length > 1 && (

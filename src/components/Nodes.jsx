@@ -107,8 +107,8 @@ const ActionMenu = ({ x, y, onAddAttribute, onConnect, onDelete }) => {
           </svg>
           
           <ActionHandle x={30} y={0} icon={Plus} color="#64748b" title="Add Attribute" onClick={(e) => { setIsOpen(false); onAddAttribute(e); }} />
-          <ActionHandle x={60} y={0} icon={Link2} color="#64748b" title="Connect Relationship" onClick={(e) => { setIsOpen(false); onConnect(e); }} />
-          <ActionHandle x={90} y={0} icon={Trash2} color="#ef4444" title="Delete Entity" onClick={(e) => { setIsOpen(false); onDelete(e); }} />
+          {onConnect && <ActionHandle x={60} y={0} icon={Link2} color="#64748b" title="Connect Relationship" onClick={(e) => { setIsOpen(false); onConnect(e); }} />}
+          <ActionHandle x={onConnect ? 90 : 60} y={0} icon={Trash2} color="#ef4444" title="Delete" onClick={(e) => { setIsOpen(false); onDelete(e); }} />
         </g>
       )}
     </g>
@@ -116,7 +116,8 @@ const ActionMenu = ({ x, y, onAddAttribute, onConnect, onDelete }) => {
 };
 
 export const EntityNode = ({ node, isSelected, onPointerDown, onDoubleClick, isEditing, editingLabel, onLabelChange, onFinishEdit, onAddNode, onDeleteNode }) => {
-  const width = 120;
+  const currentLabel = isEditing ? editingLabel : (node.label || '');
+  const width = Math.max(120, currentLabel.length * 8 + 40);
   const height = 60;
   const isWeak = node.subtype === 'weak';
   
@@ -175,7 +176,8 @@ export const EntityNode = ({ node, isSelected, onPointerDown, onDoubleClick, isE
 };
 
 export const AttributeNode = ({ node, isSelected, onPointerDown, onDoubleClick, isEditing, editingLabel, onLabelChange, onFinishEdit, onDeleteNode }) => {
-  const rx = Math.max(45, node.label.length * 5 + 14);
+  const currentLabel = isEditing ? editingLabel : (node.label || '');
+  const rx = Math.max(45, currentLabel.length * 5 + 14);
   const ry = 26;
   const isDerived = node.subtype === 'derived';
   const isMultivalued = node.subtype === 'multivalued';
@@ -234,7 +236,8 @@ export const AttributeNode = ({ node, isSelected, onPointerDown, onDoubleClick, 
 };
 
 export const RelationshipNode = ({ node, isSelected, onPointerDown, onDoubleClick, isEditing, editingLabel, onLabelChange, onFinishEdit, onAddNode, onDeleteNode }) => {
-  const width = 140;
+  const currentLabel = isEditing ? editingLabel : (node.label || '');
+  const width = Math.max(140, currentLabel.length * 9 + 40);
   const height = 80;
   const isWeak = node.subtype === 'weak';
   
@@ -274,12 +277,11 @@ export const RelationshipNode = ({ node, isSelected, onPointerDown, onDoubleClic
         onLabelChange={onLabelChange}
         onFinishEdit={onFinishEdit}
       />
-      {isSelected && onDeleteNode && (
-        <ActionHandle 
-          x={0} y={height/2} 
-          icon={Trash2} color="#ef4444" 
-          title="Delete Relationship" 
-          onClick={() => onDeleteNode(node.id)} 
+      {isSelected && onAddNode && (
+        <ActionMenu 
+          x={width/2 + 10} y={-height/2}
+          onAddAttribute={() => onAddNode('attribute', 'regular', 'New Attribute', node.id, null)}
+          onDelete={() => onDeleteNode(node.id)}
         />
       )}
     </g>

@@ -51,7 +51,7 @@ export const FloatingPanel = ({
 
   const entities = nodes.filter(n => n.type === 'entity');
 
-  const entityAttributes = selectedNode && selectedNode.type === 'entity'
+  const nodeAttributes = selectedNode && (selectedNode.type === 'entity' || selectedNode.type === 'relationship')
     ? nodes.filter(n => n.type === 'attribute' && n.parentId === selectedNode.id)
     : [];
 
@@ -64,18 +64,18 @@ export const FloatingPanel = ({
     });
   };
 
-  const prevAttrCountRef = React.useRef(entityAttributes.length);
+  const prevAttrCountRef = React.useRef(nodeAttributes.length);
   React.useEffect(() => {
-    if (entityAttributes.length > prevAttrCountRef.current) {
-      const newAttr = entityAttributes[entityAttributes.length - 1];
+    if (nodeAttributes.length > prevAttrCountRef.current) {
+      const newAttr = nodeAttributes[nodeAttributes.length - 1];
       const input = document.getElementById(`attr-input-${newAttr.id}`);
       if (input) {
         input.focus();
         input.select();
       }
     }
-    prevAttrCountRef.current = entityAttributes.length;
-  }, [entityAttributes]);
+    prevAttrCountRef.current = nodeAttributes.length;
+  }, [nodeAttributes]);
 
   const handleAddQuickEntity = (e) => {
     e.preventDefault();
@@ -88,7 +88,7 @@ export const FloatingPanel = ({
     if (e) e.preventDefault();
     if (!selectedNode || selectedNode.type !== 'entity') return;
     
-    const attrName = newAttrName.trim() || `attr_${entityAttributes.length + 1}`;
+    const attrName = newAttrName.trim() || `attr_${nodeAttributes.length + 1}`;
     onAddNode('attribute', newAttrType, attrName, selectedNode.id, null);
     setNewAttrName('');
     setNewAttrType('regular');
@@ -112,6 +112,96 @@ export const FloatingPanel = ({
     if (!selectedNode || selectedNode.type !== 'relationship') return;
     onUpdateNode(selectedNode.id, { cardinality1: c1, cardinality2: c2 });
   };
+
+  const renderAttributesSection = () => (
+    <div className="panel-section">
+      <div className="section-title-row">
+        <div className="section-title">
+          <Tag size={14} style={{ marginRight: '6px' }} />
+          Attributes
+        </div>
+        <span className="badge">{nodeAttributes.length}</span>
+      </div>
+
+      <div className="attributes-manager-list" style={{ gap: '6px' }}>
+        {nodeAttributes.map((attr) => {
+          const subAttrs = nodes.filter(n => n.type === 'attribute' && n.parentId === attr.id);
+          return (
+          <div key={attr.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                id={`attr-input-${attr.id}`}
+                className="input-field input-field-sm"
+                style={{ flex: 1 }}
+                value={attr.label}
+                onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
+                placeholder="Name"
+              />
+              <div style={{ width: '130px', flexShrink: 0 }}>
+                <CustomSelect
+                  small
+                  value={attr.subtype || 'regular'}
+                  onChange={(val) => handleSubtypeChange(attr.id, attr.subtype, val)}
+                  options={[
+                    { value: 'key', label: 'Primary Key' },
+                    { value: 'weak_key', label: 'Weak Key' },
+                    { value: 'regular', label: 'Regular' },
+                    { value: 'multivalued', label: 'Multi-valued' },
+                    { value: 'derived', label: 'Derived' },
+                    { value: 'composite', label: 'Composite' }
+                  ]}
+                />
+              </div>
+              <button 
+                className="btn-icon-danger" 
+                title="Delete Attribute"
+                onClick={() => onDeleteNode(attr.id)}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+            {attr.subtype === 'composite' && (
+              <div style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '2px solid #e2e8f0', marginLeft: '6px', marginTop: '2px', marginBottom: '8px' }}>
+                {subAttrs.map(subAttr => (
+                  <div key={subAttr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={13} style={{ color: '#94a3b8' }} />
+                    <input
+                      className="input-field input-field-sm"
+                      style={{ flex: 1 }}
+                      value={subAttr.label}
+                      onChange={(e) => onUpdateNode(subAttr.id, { label: e.target.value })}
+                      placeholder="Sub-attribute"
+                    />
+                    <button 
+                      className="btn-icon-danger" 
+                      style={{ padding: '4px' }}
+                      onClick={() => onDeleteNode(subAttr.id)}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  style={{ alignSelf: 'flex-start', padding: '4px 8px', fontSize: '11px', minHeight: '24px' }}
+                  onClick={() => onAddNode('attribute', 'regular', 'Sub-Attr', attr.id, null)}
+                >
+                  <Plus size={12} /> Add Sub-Attribute
+                </button>
+              </div>
+            )}
+          </div>
+        )})}
+        <button 
+          className="btn btn-secondary" 
+          style={{ marginTop: '4px' }}
+          onClick={() => onAddNode('attribute', 'regular', 'New Attribute', selectedNode.id, null)}
+        >
+          <Plus size={14} /> Add Attribute
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <aside className="sidebar no-export">
@@ -270,93 +360,7 @@ export const FloatingPanel = ({
               </div>
             </div>
 
-            <div className="panel-section">
-              <div className="section-title-row">
-                <div className="section-title">
-                  <Tag size={14} style={{ marginRight: '6px' }} />
-                  Attributes
-                </div>
-                <span className="badge">{entityAttributes.length}</span>
-              </div>
-
-              <div className="attributes-manager-list" style={{ gap: '6px' }}>
-                {entityAttributes.map((attr) => {
-                  const subAttrs = nodes.filter(n => n.type === 'attribute' && n.parentId === attr.id);
-                  return (
-                  <div key={attr.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input
-                        id={`attr-input-${attr.id}`}
-                        className="input-field input-field-sm"
-                        style={{ flex: 1 }}
-                        value={attr.label}
-                        onChange={(e) => onUpdateNode(attr.id, { label: e.target.value })}
-                        placeholder="Name"
-                      />
-                      <div style={{ width: '130px', flexShrink: 0 }}>
-                        <CustomSelect
-                          small
-                          value={attr.subtype || 'regular'}
-                          onChange={(val) => handleSubtypeChange(attr.id, attr.subtype, val)}
-                          options={[
-                            { value: 'key', label: 'Primary Key' },
-                            { value: 'weak_key', label: 'Weak Key' },
-                            { value: 'regular', label: 'Regular' },
-                            { value: 'multivalued', label: 'Multi-valued' },
-                            { value: 'derived', label: 'Derived' },
-                            { value: 'composite', label: 'Composite' }
-                          ]}
-                        />
-                      </div>
-                      <button 
-                        className="btn-icon-danger" 
-                        title="Delete Attribute"
-                        onClick={() => onDeleteNode(attr.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    {attr.subtype === 'composite' && (
-                      <div style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '6px', borderLeft: '2px solid #e2e8f0', marginLeft: '6px', marginTop: '2px', marginBottom: '8px' }}>
-                        {subAttrs.map(subAttr => (
-                          <div key={subAttr.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Layers size={13} style={{ color: '#94a3b8' }} />
-                            <input
-                              className="input-field input-field-sm"
-                              style={{ flex: 1 }}
-                              value={subAttr.label}
-                              onChange={(e) => onUpdateNode(subAttr.id, { label: e.target.value })}
-                              placeholder="Sub-attribute"
-                            />
-                            <button 
-                              className="btn-icon-danger" 
-                              style={{ padding: '4px' }}
-                              onClick={() => onDeleteNode(subAttr.id)}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        ))}
-                        <button 
-                          className="btn btn-secondary btn-sm" 
-                          style={{ alignSelf: 'flex-start', padding: '4px 8px', fontSize: '11px', minHeight: '24px' }}
-                          onClick={() => onAddNode('attribute', 'regular', 'Sub-Attr', attr.id, null)}
-                        >
-                          <Plus size={12} /> Add Sub-Attribute
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )})}
-                <button 
-                  className="btn btn-secondary" 
-                  style={{ marginTop: '4px' }}
-                  onClick={() => onAddNode('attribute', 'regular', 'New Attribute', selectedNode.id, null)}
-                >
-                  <Plus size={14} /> Add Attribute
-                </button>
-              </div>
-            </div>
+            {renderAttributesSection()}
 
             <div className="panel-section">
               <div className="section-title">Relationships</div>
@@ -497,6 +501,17 @@ export const FloatingPanel = ({
                     ]}
                   />
                 </div>
+                <div style={{ width: '90px', flexShrink: 0 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.participation1 || 'partial'} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { participation1: val })}
+                    options={[
+                      { value: 'partial', label: 'Partial' },
+                      { value: 'total', label: 'Total' }
+                    ]}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -525,9 +540,21 @@ export const FloatingPanel = ({
                     ]}
                   />
                 </div>
+                <div style={{ width: '90px', flexShrink: 0 }}>
+                  <CustomSelect
+                    small
+                    value={selectedNode.participation2 || 'partial'} 
+                    onChange={(val) => onUpdateNode(selectedNode.id, { participation2: val })}
+                    options={[
+                      { value: 'partial', label: 'Partial' },
+                      { value: 'total', label: 'Total' }
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 
+            {renderAttributesSection()}
 
             <div className="panel-actions-footer">
               <button className="btn btn-secondary btn-danger" onClick={() => onDeleteNode(selectedNode.id)}>

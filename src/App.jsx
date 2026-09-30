@@ -3,7 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { Canvas } from './components/Canvas';
 import { FloatingPanel } from './components/FloatingPanel';
 import { TopBar } from './components/TopBar';
+import { SchemaPreview } from './components/SchemaPreview';
 import { getNonOverlappingPosition } from './utils/placement';
+import { convertERToRelational } from './utils/erToRelational';
 import { Analytics } from "@vercel/analytics/react";
 import { 
   loadStoredDiagrams, 
@@ -19,6 +21,8 @@ function App() {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [editingNodeId, setEditingNodeId] = useState(null);
   const [presentationMode, setPresentationMode] = useState(false);
+  const [showSchemaPreview, setShowSchemaPreview] = useState(false);
+  const [generatedSchema, setGeneratedSchema] = useState([]);
   
   const [history, setHistory] = useState({ past: [], future: [] });
 
@@ -94,7 +98,13 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, presentationMode, history]);
+  }, [selectedNodeId, presentationMode, history, showSchemaPreview]);
+
+  const handlePreviewSchema = () => {
+    const schema = convertERToRelational(nodes, edges);
+    setGeneratedSchema(schema);
+    setShowSchemaPreview(true);
+  };
 
   const updateActiveDiagram = (updater) => {
     setDiagrams(prev => prev.map(d => {
@@ -202,7 +212,7 @@ function App() {
       y,
       parentId,
       parentId2,
-      ...(type === 'relationship' ? { cardinality1: '1', cardinality2: 'N' } : {})
+      ...(type === 'relationship' ? { cardinality1: '1', cardinality2: 'N', participation1: 'partial', participation2: 'partial' } : {})
     };
 
     updateActiveDiagram(d => {
@@ -215,10 +225,10 @@ function App() {
         newEdges.push({ id: uuidv4(), source: newNode.id, target: parentId });
       } else if (type === 'relationship') {
         if (parentId) {
-          newEdges.push({ id: uuidv4(), source: newNode.id, target: parentId });
+          newEdges.push({ id: uuidv4(), source: newNode.id, target: parentId, role: '1' });
         }
         if (parentId2) {
-          newEdges.push({ id: uuidv4(), source: newNode.id, target: parentId2 });
+          newEdges.push({ id: uuidv4(), source: newNode.id, target: parentId2, role: '2' });
         }
       }
 
@@ -243,7 +253,7 @@ function App() {
         if (n.id === nodeId) {
           return { ...n, x: newX, y: newY };
         }
-        if (node.type === 'entity' && n.type === 'attribute' && n.parentId === nodeId) {
+        if ((node.type === 'entity' || node.type === 'relationship') && n.type === 'attribute' && n.parentId === nodeId) {
           return { ...n, x: n.x + dx, y: n.y + dy };
         }
         return n;
@@ -265,10 +275,10 @@ function App() {
         newEdges = currentEdges.filter(e => e.source !== nodeId);
         const updatedNode = { ...currentNodes.find(n => n.id === nodeId), ...updates };
         if (updatedNode.parentId) {
-          newEdges.push({ id: uuidv4(), source: nodeId, target: updatedNode.parentId });
+          newEdges.push({ id: uuidv4(), source: nodeId, target: updatedNode.parentId, role: '1' });
         }
         if (updatedNode.parentId2) {
-          newEdges.push({ id: uuidv4(), source: nodeId, target: updatedNode.parentId2 });
+          newEdges.push({ id: uuidv4(), source: nodeId, target: updatedNode.parentId2, role: '2' });
         }
       }
 
@@ -328,6 +338,7 @@ function App() {
                       onRedo={handleRedo}
                       canUndo={history.past.length > 0}
                       canRedo={history.future.length > 0}
+                      onPreviewSchema={handlePreviewSchema}
                   />
                   <FloatingPanel
                       nodes={nodes}
@@ -358,6 +369,12 @@ function App() {
               presentationMode={presentationMode}
               setPresentationMode={setPresentationMode}
           />
+          {showSchemaPreview && (
+              <SchemaPreview 
+                schema={generatedSchema} 
+                onClose={() => setShowSchemaPreview(false)} 
+              />
+          )}
       </>
   );
 }

@@ -5,14 +5,57 @@ import { ZoomIn, ZoomOut, Maximize, Minimize, Focus, Plus, Trash2, Link2 } from 
 
 const getNodeCenter = (node) => {
   if (node.type === 'entity') {
-    return { x: node.x + 60, y: node.y + 30 };
+    const width = Math.max(120, (node.label || '').length * 8 + 40);
+    return { x: node.x + width / 2, y: node.y + 30 };
   } else if (node.type === 'relationship') {
-    return { x: node.x + 70, y: node.y + 40 };
+    const width = Math.max(140, (node.label || '').length * 9 + 40);
+    return { x: node.x + width / 2, y: node.y + 40 };
   } else if (node.type === 'attribute') {
-    const rx = Math.max(45, node.label.length * 5 + 14);
+    const rx = Math.max(45, (node.label || '').length * 5 + 14);
     return { x: node.x + rx, y: node.y + 26 };
   }
   return { x: node.x, y: node.y };
+};
+
+const getIntersectionPoint = (node, targetPoint) => {
+  const center = getNodeCenter(node);
+  const dx = targetPoint.x - center.x;
+  const dy = targetPoint.y - center.y;
+  
+  if (dx === 0 && dy === 0) return center;
+
+  if (node.type === 'entity') {
+    const width = Math.max(120, (node.label || '').length * 8 + 40);
+    const height = 60;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    
+    if (Math.abs(dx) * halfH > Math.abs(dy) * halfW) {
+      const x = dx > 0 ? halfW : -halfW;
+      const y = x * (dy / dx);
+      return { x: center.x + x, y: center.y + y };
+    } else {
+      const y = dy > 0 ? halfH : -halfH;
+      const x = dx === 0 ? 0 : y * (dx / dy);
+      return { x: center.x + x, y: center.y + y };
+    }
+  } else if (node.type === 'relationship') {
+    const width = Math.max(140, (node.label || '').length * 9 + 40);
+    const height = 80;
+    const halfW = width / 2;
+    const halfH = height / 2;
+    
+    const t = 1 / (Math.abs(dx) / halfW + Math.abs(dy) / halfH);
+    return { x: center.x + t * dx, y: center.y + t * dy };
+  } else if (node.type === 'attribute') {
+    const rx = Math.max(45, (node.label || '').length * 5 + 14);
+    const ry = 26;
+    
+    const t = 1 / Math.sqrt(Math.pow(dx / rx, 2) + Math.pow(dy / ry, 2));
+    return { x: center.x + t * dx, y: center.y + t * dy };
+  }
+  
+  return center;
 };
 
 export const Canvas = ({ 
@@ -352,7 +395,7 @@ export const Canvas = ({
       if (n.id === draggedNodeId) {
         return { ...n, x: draggedNodePos.x, y: draggedNodePos.y };
       }
-      if (draggedOriginalNode.type === 'entity' && n.type === 'attribute' && n.parentId === draggedNodeId) {
+      if ((draggedOriginalNode.type === 'entity' || draggedOriginalNode.type === 'relationship') && n.type === 'attribute' && n.parentId === draggedNodeId) {
         return { ...n, x: n.x + dx, y: n.y + dy };
       }
       return n;
@@ -386,59 +429,99 @@ export const Canvas = ({
             const target = displayNodes.find(n => n.id === edge.target);
             if (!source || !target) return null;
 
-            const p1 = getNodeCenter(source);
-            const p2 = getNodeCenter(target);
+            const center1 = getNodeCenter(source);
+            const center2 = getNodeCenter(target);
+            const p1 = getIntersectionPoint(source, center2);
+            const p2 = getIntersectionPoint(target, center1);
 
             let cardinality = null;
-            let relCenter = null;
-            let entCenter = null;
+            let participation = null;
+            let isRecursive = false;
+            let curveBulge = 0;
 
             if (source.type === 'relationship' && target.type === 'entity') {
-              relCenter = p1;
-              entCenter = p2;
-              if (target.id === source.parentId) {
+              isRecursive = source.parentId === source.parentId2;
+              if (edge.role === '1') {
                 cardinality = source.cardinality1 !== undefined ? source.cardinality1 : '1';
-              } else if (target.id === source.parentId2) {
+                participation = source.participation1;
+                if (isRecursive) curveBulge = 40;
+              } else if (edge.role === '2') {
                 cardinality = source.cardinality2 !== undefined ? source.cardinality2 : 'N';
+                participation = source.participation2;
+                if (isRecursive) curveBulge = -40;
+              } else {
+                cardinality = target.id === source.parentId ? source.cardinality1 : source.cardinality2;
+                participation = target.id === source.parentId ? source.participation1 : source.participation2;
               }
             } else if (target.type === 'relationship' && source.type === 'entity') {
-              relCenter = p2;
-              entCenter = p1;
-              if (source.id === target.parentId) {
+              isRecursive = target.parentId === target.parentId2;
+              if (edge.role === '1') {
                 cardinality = target.cardinality1 !== undefined ? target.cardinality1 : '1';
-              } else if (source.id === target.parentId2) {
+                participation = target.participation1;
+                if (isRecursive) curveBulge = -40;
+              } else if (edge.role === '2') {
                 cardinality = target.cardinality2 !== undefined ? target.cardinality2 : 'N';
+                participation = target.participation2;
+                if (isRecursive) curveBulge = 40;
+              } else {
+                cardinality = source.id === target.parentId ? target.cardinality1 : target.cardinality2;
+                participation = source.id === target.parentId ? target.participation1 : target.participation2;
               }
+            }
+
+            const drawDx = p2.x - p1.x;
+            const drawDy = p2.y - p1.y;
+            const drawLen = Math.sqrt(drawDx * drawDx + drawDy * drawDy) || 1;
+            const drawNx = -drawDy / drawLen;
+            const drawNy = drawDx / drawLen;
+
+            let pathD = `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y}`;
+            let curveMidX = p1.x + drawDx * 0.5;
+            let curveMidY = p1.y + drawDy * 0.5;
+
+            if (isRecursive) {
+              const cx = curveMidX + drawNx * (curveBulge * 2);
+              const cy = curveMidY + drawNy * (curveBulge * 2);
+              pathD = `M ${p1.x} ${p1.y} Q ${cx} ${cy} ${p2.x} ${p2.y}`;
+              curveMidX = (p1.x + 2 * cx + p2.x) / 4;
+              curveMidY = (p1.y + 2 * cy + p2.y) / 4;
             }
 
             let textX = 0;
             let textY = 0;
-            if (cardinality && relCenter && entCenter) {
-              const t = 0.5;
-              const lx = relCenter.x + (entCenter.x - relCenter.x) * t;
-              const ly = relCenter.y + (entCenter.y - relCenter.y) * t;
 
-              const dx = entCenter.x - relCenter.x;
-              const dy = entCenter.y - relCenter.y;
-              const len = Math.sqrt(dx * dx + dy * dy) || 1;
-              const nx = -dy / len;
-              const ny = dx / len;
-              const offset = 12;
-
-              textX = lx + nx * offset;
-              textY = ly + ny * offset;
+            if (cardinality) {
+              const textOffset = 16;
+              const normalSign = curveBulge >= 0 ? 1 : -1;
+              textX = curveMidX + drawNx * normalSign * textOffset;
+              textY = curveMidY + drawNy * normalSign * textOffset;
             }
 
             return (
               <g key={edge.id}>
-                <line
-                  x1={p1.x}
-                  y1={p1.y}
-                  x2={p2.x}
-                  y2={p2.y}
-                  stroke="var(--node-stroke)"
-                  strokeWidth="2"
-                />
+                {participation === 'total' ? (
+                  <>
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke="var(--node-stroke)"
+                      strokeWidth="5"
+                    />
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke="var(--bg-color)"
+                      strokeWidth="1.5"
+                    />
+                  </>
+                ) : (
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke="var(--node-stroke)"
+                    strokeWidth="2"
+                  />
+                )}
                 {cardinality && (
                   <g transform={`translate(${textX}, ${textY})`} style={{ pointerEvents: 'none' }}>
                     <text
